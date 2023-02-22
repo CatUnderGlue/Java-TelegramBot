@@ -7,8 +7,8 @@ public interface ValidationService {
     /**
      * Проверка даты в задаче на совпадение с текущей
      *
-     * @param task Задача пользователя
+     * @param task   Задача пользователя
      * @return Совпала(true)/Не совпала(false)
      */
-    boolean checkDateMatch(Task task);
+    boolean checkDateMatch(Long userId ,Task task);
 }

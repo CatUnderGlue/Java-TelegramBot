@@ -1,5 +1,7 @@
 package ru.catunderglue.telegramspringbot.service;
 
+import ru.catunderglue.telegramspringbot.model.enums.Timezone;
+
 public interface NotificationService {
     /**
      * Установка утреннего уведомления
@@ -24,6 +26,10 @@ public interface NotificationService {
      * @param toggle - true(Вкл)/false(Выкл)
      */
     void setAllNotification(Long userId, Boolean toggle);
+
+    void setUserTimezone(Long userId, Timezone timezone);
+
+    Timezone getUserTimezone(Long userId);
 
     /**
      * Проверка состояния утреннего уведомления

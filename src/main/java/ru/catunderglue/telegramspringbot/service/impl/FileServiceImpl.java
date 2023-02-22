@@ -21,6 +21,9 @@ public class FileServiceImpl implements FileService {
     @Value(value = "${notifications.data.file.name}")
     private String notificationsDataFileName;
 
+    @Value(value = "${timezones.data.file.name}")
+    private String timezonesDataFileName;
+
     @Override
     public boolean saveTasksToFile(String json) {
         return saveToFile(json, tasksDataFileName);
@@ -39,6 +42,16 @@ public class FileServiceImpl implements FileService {
     @Override
     public String readNotificationsFromFile() {
         return readFromFile(notificationsDataFileName);
+    }
+
+    @Override
+    public boolean saveTimezonesToFile(String json){
+        return saveToFile(json, timezonesDataFileName);
+    }
+
+    @Override
+    public String readTimezonesFromFile() {
+        return readFromFile(timezonesDataFileName);
     }
 
     public void cleanDataFile(String dataFileName) {
@@ -79,6 +92,9 @@ public class FileServiceImpl implements FileService {
             }
             if (Files.notExists(Path.of(dataFilesPath, notificationsDataFileName))) {
                 Files.createFile(Path.of(dataFilesPath, notificationsDataFileName));
+            }
+            if (Files.notExists(Path.of(dataFilesPath, timezonesDataFileName))) {
+                Files.createFile(Path.of(dataFilesPath, timezonesDataFileName));
             }
         } catch (IOException e) {
             e.printStackTrace();

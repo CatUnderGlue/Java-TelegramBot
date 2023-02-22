@@ -31,4 +31,8 @@ public interface FileService {
      * @return String с уведомлениями из файла
      */
     String readNotificationsFromFile();
+
+    boolean saveTimezonesToFile(String json);
+
+    String readTimezonesFromFile();
 }
