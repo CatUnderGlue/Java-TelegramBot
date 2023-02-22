@@ -24,4 +24,6 @@ public interface KeyboardService {
      * @return InlineKeyboardMarkup уведомления: за 30 минут до начала
      */
     InlineKeyboardMarkup getBeforeTaskNotificationKeyboard();
+
+    InlineKeyboardMarkup getTimezonesKeyboard();
 }

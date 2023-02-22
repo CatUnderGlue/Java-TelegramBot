@@ -107,10 +107,12 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public Map<LocalTime, Task> getTasksForToday(long userId){
         Map<LocalTime, Task> userTasks = new TreeMap<>();
-        for (Map.Entry<Long, Task> entry : getTasks(userId).entrySet()){
-            entry.getValue().setId(entry.getKey());
-            if (validationService.checkDateMatch(entry.getValue())){
-                userTasks.put(entry.getValue().getTime(), entry.getValue());
+        if (getTasks(userId) != null) {
+            for (Map.Entry<Long, Task> entry : getTasks(userId).entrySet()) {
+                entry.getValue().setId(entry.getKey());
+                if (validationService.checkDateMatch(userId ,entry.getValue())) {
+                    userTasks.put(entry.getValue().getTime(), entry.getValue());
+                }
             }
         }
         return userTasks;

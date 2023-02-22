@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
+import ru.catunderglue.telegramspringbot.model.enums.Timezone;
 import ru.catunderglue.telegramspringbot.service.FileService;
 import ru.catunderglue.telegramspringbot.service.NotificationService;
 
@@ -20,6 +21,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
     HashMap<Long, Map<Notification, Boolean>> usersNotifications = new HashMap<>();
+    HashMap<Long, Timezone> timezones = new HashMap<>();
 
     private final FileService fileService;
 
@@ -41,6 +43,17 @@ public class NotificationServiceImpl implements NotificationService {
     public void setAllNotification(Long userId, Boolean toggle) {
         setMorningNotification(userId, toggle);
         setBeforeTaskNotification(userId, toggle);
+    }
+
+    @Override
+    public void setUserTimezone(Long userId, Timezone timezone){
+        timezones.put(userId, timezone);
+        saveTimezonesToFile();
+    }
+
+    @Override
+    public Timezone getUserTimezone(Long userId){
+        return timezones.get(userId);
     }
 
     @Override
@@ -66,17 +79,18 @@ public class NotificationServiceImpl implements NotificationService {
             usersNotifications.put(userId, new HashMap<>());
         }
         usersNotifications.get(userId).put(notification, toggle);
-        saveToFile();
+        saveNotificationsToFile();
     }
 
     // ================================================================================================================
     // Files
     @PostConstruct
     private void init() {
-        readFromFile();
+        readNotificationsFromFile();
+        readTimezonesFromFile();
     }
 
-    private void saveToFile() {
+    private void saveNotificationsToFile() {
         try {
             String json = mapper.writeValueAsString(usersNotifications);
             fileService.saveNotificationsToFile(json);
@@ -85,11 +99,32 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private void readFromFile() {
+    private void readNotificationsFromFile() {
         String json = fileService.readNotificationsFromFile();
         try {
             if (!json.isBlank()) {
                 usersNotifications = mapper.readValue(json, new TypeReference<HashMap<Long, Map<Notification, Boolean>>>() {
+                });
+            }
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveTimezonesToFile() {
+        try {
+            String json = mapper.writeValueAsString(timezones);
+            fileService.saveTimezonesToFile(json);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void readTimezonesFromFile() {
+        String json = fileService.readTimezonesFromFile();
+        try {
+            if (!json.isBlank()) {
+                timezones = mapper.readValue(json, new TypeReference<HashMap<Long, Timezone>>() {
                 });
             }
         } catch (JsonProcessingException e) {
