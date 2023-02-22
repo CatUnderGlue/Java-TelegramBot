@@ -25,5 +25,7 @@ public interface KeyboardService {
      */
     InlineKeyboardMarkup getBeforeTaskNotificationKeyboard();
 
+    InlineKeyboardMarkup getNotificationsKeyboard();
+
     InlineKeyboardMarkup getTimezonesKeyboard();
 }

@@ -59,18 +59,10 @@ public class KeyboardServiceImpl implements KeyboardService {
 
         row = new ArrayList<>();
 
-        InlineKeyboardButton setMorningNotificationButton = new InlineKeyboardButton();
-        setMorningNotificationButton.setText("Вкл/выкл утреннего уведомления");
-        setMorningNotificationButton.setCallbackData("/set_morning_notification");
-        row.add(setMorningNotificationButton);
-        keyboardRows.add(row);
-
-        row = new ArrayList<>();
-
-        InlineKeyboardButton setBeforeTaskNotificationButton = new InlineKeyboardButton();
-        setBeforeTaskNotificationButton.setText("Вкл/выкл уведомления за 30 минут до начала");
-        setBeforeTaskNotificationButton.setCallbackData("/set_before_task_notification");
-        row.add(setBeforeTaskNotificationButton);
+        InlineKeyboardButton notificationsButton = new InlineKeyboardButton();
+        notificationsButton.setText("Уведомления");
+        notificationsButton.setCallbackData("/notifications");
+        row.add(notificationsButton);
         keyboardRows.add(row);
 
         replyKeyboardMarkup.setKeyboard(keyboardRows);
@@ -114,6 +106,28 @@ public class KeyboardServiceImpl implements KeyboardService {
         toggleNotificationOffButton.setText("Выключить");
         toggleNotificationOffButton.setCallbackData("/set_before_task_notification 0");
         row.add(toggleNotificationOffButton);
+
+        keyboardRows.add(row);
+        replyKeyboardMarkup.setKeyboard(keyboardRows);
+
+        return replyKeyboardMarkup;
+    }
+
+    @Override
+    public InlineKeyboardMarkup getNotificationsKeyboard(){
+        InlineKeyboardMarkup replyKeyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboardRows = new ArrayList<>();
+        List<InlineKeyboardButton> row = new ArrayList<>();
+
+        InlineKeyboardButton morningNotificationButton = new InlineKeyboardButton();
+        morningNotificationButton.setText("Утреннее уведомление");
+        morningNotificationButton.setCallbackData("/set_morning_notification");
+        row.add(morningNotificationButton);
+
+        InlineKeyboardButton beforeTaskNotificationButton = new InlineKeyboardButton();
+        beforeTaskNotificationButton.setText("Уведомление за 30 минут");
+        beforeTaskNotificationButton.setCallbackData("/set_before_task_notification");
+        row.add(beforeTaskNotificationButton);
 
         keyboardRows.add(row);
         replyKeyboardMarkup.setKeyboard(keyboardRows);

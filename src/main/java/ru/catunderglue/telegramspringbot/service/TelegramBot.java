@@ -337,6 +337,13 @@ public class TelegramBot extends TelegramLongPollingBot {
         log.info("/set_user_timezone command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
     }
 
+    private void notificationsCommandReceived(Long chatId, Update update){
+        SendMessage message = buildMessage(chatId, "Настройка уведомлений");
+        message.setReplyMarkup(keyboardService.getNotificationsKeyboard());
+        sendMessage(message);
+
+    }
+
     // ================================================================================================================
     // 
     private String userInfo(Update update) {
@@ -376,6 +383,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             case "/set_before_task_notification" -> setBeforeTaskNotificationCommandReceived(chatId, update);
             case "/set_user_timezone" -> setUserTimezoneCommandReceived(chatId, update);
             case "/update_task" -> updateTaskCommandReceived(chatId, update);
+            case "/notifications" -> notificationsCommandReceived(chatId, update);
             default -> buildMessage(chatId, "Command was not recognize");
         }
     }
