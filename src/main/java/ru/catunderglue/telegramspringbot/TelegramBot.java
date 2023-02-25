@@ -1,4 +1,4 @@
-package ru.catunderglue.telegramspringbot.service;
+package ru.catunderglue.telegramspringbot;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -11,6 +11,9 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.catunderglue.telegramspringbot.config.BotConfig;
 import ru.catunderglue.telegramspringbot.model.Task;
 import ru.catunderglue.telegramspringbot.model.enums.Timezone;
+import ru.catunderglue.telegramspringbot.service.KeyboardService;
+import ru.catunderglue.telegramspringbot.service.NotificationService;
+import ru.catunderglue.telegramspringbot.service.TaskService;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -75,7 +78,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (!notificationService.isContains(chatId)) {
             notificationService.setAllNotification(chatId, true);
         }
-        if (notificationService.getUserTimezone(chatId) == null){
+        if (notificationService.getUserTimezone(chatId) == null) {
             notificationService.setUserTimezone(chatId, Timezone.MOSCOW);
         }
     }
@@ -125,7 +128,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         log.info("/get_tasks command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
     }
 
-    private void updateTaskCommandReceived(long chatId, Update update){
+    private void updateTaskCommandReceived(long chatId, Update update) {
         String timezone = notificationService.getUserTimezone(chatId).getTimezone();
         LocalDate now = ZonedDateTime.now(ZoneId.of(timezone)).toLocalDate();
         if (update.getMessage() == null || update.getMessage().getText().equals("/update_task")) {
@@ -188,13 +191,17 @@ public class TelegramBot extends TelegramLongPollingBot {
             sendMessage(buildMessage(chatId, "Список задач на сегодня пуст"));
         }
         log.info("/get_tasks_for_today command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
+    }
 
+    @Scheduled(cron = "0 * * * * *")
+    private void clearOldTask(){
+        taskService.clearTasks((Task task) -> task.getDate().plusDays(1).isBefore(LocalDate.now()));
     }
 
     // ================================================================================================================
     // Notifications
 
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "0 0 0 * * *")
     private void sendAllUsersTasksForToday() {
         Map<Long, Map<LocalTime, Task>> tasksByDay = taskService.getTaskByDayForAll();
         for (Map.Entry<Long, Map<LocalTime, Task>> entry : tasksByDay.entrySet()) {
@@ -302,7 +309,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         log.info("/set_before_task_notification command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
     }
 
-    private void setUserTimezoneCommandReceived(Long chatId, Update update){
+    private void setUserTimezoneCommandReceived(Long chatId, Update update) {
         if (update.getCallbackQuery().getData().strip().equals("/set_user_timezone")) {
             SendMessage message = buildMessage(chatId, "Настройка вашего часового пояса.");
             message.setReplyMarkup(keyboardService.getTimezonesKeyboard());
@@ -310,7 +317,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             return;
         }
         String[] messageParts = update.getCallbackQuery().getData().split("\s", 2);
-        if (messageParts[1].equals("check")){
+        if (messageParts[1].equals("check")) {
             String timezone = notificationService.getUserTimezone(chatId).getTimezone();
             LocalTime now = ZonedDateTime.now(ZoneId.of(timezone)).toLocalTime();
             sendMessage(buildMessage(chatId, "Ваше время: " + now.format(DateTimeFormatter.ofPattern("HH:mm")) + "\nВаш часовой пояс: " + timezone));
@@ -337,7 +344,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         log.info("/set_user_timezone command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
     }
 
-    private void notificationsCommandReceived(Long chatId, Update update){
+    private void notificationsCommandReceived(Long chatId, Update update) {
         SendMessage message = buildMessage(chatId, "Настройка уведомлений");
         message.setReplyMarkup(keyboardService.getNotificationsKeyboard());
         sendMessage(message);

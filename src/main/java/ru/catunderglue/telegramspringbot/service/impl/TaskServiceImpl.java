@@ -7,10 +7,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 import ru.catunderglue.telegramspringbot.model.Task;
-import ru.catunderglue.telegramspringbot.service.FileService;
-import ru.catunderglue.telegramspringbot.service.NotificationService;
-import ru.catunderglue.telegramspringbot.service.TaskService;
-import ru.catunderglue.telegramspringbot.service.ValidationService;
+import ru.catunderglue.telegramspringbot.service.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -116,6 +113,18 @@ public class TaskServiceImpl implements TaskService {
             }
         }
         return userTasks;
+    }
+
+    @Override
+    public void clearTasks(CheckTask filter){
+        for (Long id : getUsersIds()) {
+            for (Map.Entry<Long, Task> taskEntry : getTasks(id).entrySet()) {
+                if (taskEntry != null && filter.checkTask(taskEntry.getValue())){
+                    removeTask(taskEntry.getKey(), id);
+                }
+            }
+        }
+
     }
 
     // ================================================================================================================
