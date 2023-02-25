@@ -77,4 +77,6 @@ public interface TaskService {
      * @return Карта(Время, Задача)
      */
     Map<LocalTime, Task> getTasksForToday(long userId);
+
+    void clearTasks(CheckTask filter);
 }

@@ -10,7 +10,7 @@ import java.time.LocalTime;
 
 @Data
 @NoArgsConstructor
-public class Task {
+public class Task implements Comparable<Task>{
     @NotBlank
     private String title;
     @NotBlank
@@ -33,5 +33,24 @@ public class Task {
         return title + "\n" +
                 description + "\n" +
                 "Дата выполнения: " + date + " Время: " + time + "\n";
+    }
+
+    @Override
+    public int compareTo(Task task) {
+        int res;
+        if (this.date.isBefore(task.getDate())){
+            res = -1;
+        } else if (this.date.isAfter(task.getDate())) {
+            res = 1;
+        } else {
+            if (this.time.isBefore(task.getTime())){
+                res = -1;
+            } else if (this.time.isAfter(task.getTime())) {
+                res = 1;
+            } else {
+                res = 0;
+            }
+        }
+        return res;
     }
 }

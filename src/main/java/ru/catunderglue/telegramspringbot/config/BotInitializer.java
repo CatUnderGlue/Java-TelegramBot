@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
-import ru.catunderglue.telegramspringbot.service.TelegramBot;
+import ru.catunderglue.telegramspringbot.TelegramBot;
 
 @Slf4j
 @Component
