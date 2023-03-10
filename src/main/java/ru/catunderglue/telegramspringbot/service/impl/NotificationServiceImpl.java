@@ -27,9 +27,9 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public boolean setMorningNotification(Integer userId, Boolean toggle) {
         if (usersNotifications.existsById(userId)){
-            ru.catunderglue.telegramspringbot.model.Notification notification = usersNotifications.getOne(userId);
-            notification.setMorning(toggle);
-            usersNotifications.save(notification);
+            Optional<ru.catunderglue.telegramspringbot.model.Notification> notification = usersNotifications.findById(userId);
+            notification.ifPresent(value -> value.setMorning(toggle));
+            usersNotifications.save(notification.get());
             return true;
         }
         return false;
@@ -38,9 +38,9 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public boolean setBeforeTaskNotification(Integer userId, Boolean toggle) {
         if (usersNotifications.existsById(userId)){
-            ru.catunderglue.telegramspringbot.model.Notification notification = usersNotifications.getOne(userId);
-            notification.setBeforeTask(toggle);
-            usersNotifications.save(notification);
+            Optional<ru.catunderglue.telegramspringbot.model.Notification> notification = usersNotifications.findById(userId);
+            notification.ifPresent(value -> value.setBeforeTask(toggle));
+            usersNotifications.save(notification.get());
             return true;
         }
         return false;
