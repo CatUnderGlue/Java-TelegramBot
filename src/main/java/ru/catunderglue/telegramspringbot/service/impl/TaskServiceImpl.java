@@ -1,98 +1,85 @@
 package ru.catunderglue.telegramspringbot.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 import ru.catunderglue.telegramspringbot.model.Task;
+import ru.catunderglue.telegramspringbot.model.User;
+import ru.catunderglue.telegramspringbot.repository.TaskRepository;
+import ru.catunderglue.telegramspringbot.repository.UserRepository;
 import ru.catunderglue.telegramspringbot.service.*;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.*;
 
 @Service
 public class TaskServiceImpl implements TaskService {
-    private Map<Long, Map<Long, Task>> taskMap = new HashMap<>();
-    private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
-    private final FileService fileService;
     private final ValidationService validationService;
     private final NotificationService notificationService;
+    private final TaskRepository taskRepository;
+    private final UserRepository userRepository;
 
-    public TaskServiceImpl(FileService fileService,
-                           ValidationService validationService,
-                           NotificationService notificationService) {
-        this.fileService = fileService;
+    public TaskServiceImpl(ValidationService validationService,
+                           NotificationService notificationService, TaskRepository taskRepository, UserRepository userRepository) {
         this.validationService = validationService;
         this.notificationService = notificationService;
+        this.taskRepository = taskRepository;
+        this.userRepository = userRepository;
     }
 
     // ================================================================================================================
     // Tasks
     @Override
-    public Long createTask(String title, String description, String date, String time, long userId){
+    public void create(String title, String description, String date, String time, long userId) {
+        taskRepository.save(taskVerification(title, description, date, time, userId));
+    }
+
+    private Task taskVerification(String title, String description, String date, String time, long userId) {
+        date = validateDate(date);
+        time = validateTime(time);
         LocalDate parsedDate = LocalDate.parse(date);
         LocalTime parsedTime = LocalTime.parse(time);
-        if (!taskMap.containsKey(userId)){
-            taskMap.put(userId, new HashMap<>());
+        return new Task(userId, title, description, parsedDate, parsedTime);
+    }
+
+    @Override
+    public List<Task> readAll() {
+        return taskRepository.findAll();
+    }
+
+    @Override
+    public Task readOne(int id) {
+        return taskRepository.getOne(id);
+    }
+
+    @Override
+    public boolean update(Task task, int id) {
+        if (taskRepository.existsById(id)) {
+            task.setId(id);
+            taskRepository.save(task);
+            return true;
         }
-        Map<Long, Task> tasks = taskMap.get(userId);
-        long id = 0;
-        for (Long aLong : tasks.keySet()) {
-            if (aLong > id){
-                id = aLong;
-            }
+        return false;
+    }
+
+    @Override
+    public boolean delete(int id) {
+        if (taskRepository.existsById(id)) {
+            taskRepository.deleteById(id);
+            return true;
         }
-        tasks.put(++id, new Task(title, description, parsedDate, parsedTime));
-        taskMap.put(userId, tasks);
-        saveToFile();
-        return id;
+        return false;
     }
 
     @Override
-    public Map<Long, Task> getTasks(long userId){
-        if (taskMap.containsKey(userId)){
-            return taskMap.get(userId);
-        }
-        return null;
+    public List<Task> getTasksByUser(int userId) {
+        return taskRepository.findAllByUserId(userId);
     }
 
     @Override
-    public Set<Long> getUsersIds(){
-        return taskMap.keySet();
-    }
-
-    @Override
-    public Task getTaskById(Long id, long userId){
-        return taskMap.get(userId).get(id);
-    }
-
-    @Override
-    public Task updateTask(Long id, Task task, long userId){
-        if (taskMap.containsKey(userId) && taskMap.get(userId).containsKey(id)){
-            Task updatedTask = taskMap.get(userId).put(id, task);
-            saveToFile();
-            return updatedTask;
-        }
-        return null;
-    }
-
-    @Override
-    public Task removeTask(Long id, long userId){
-        if (taskMap.containsKey(userId) && taskMap.get(userId).containsKey(id)){
-            Task removedTask = taskMap.get(userId).remove(id);
-            saveToFile();
-            return removedTask;
-        }
-        return null;
-    }
-
-    @Override
-    public Map<Long, Map<LocalTime, Task>> getTaskByDayForAll(){
-        Map<Long, Map<LocalTime, Task>> map = new HashMap<>();
-        for (Long userId : getUsersIds()) {
+    public Map<Integer, Map<LocalTime, Task>> getTaskByDayForAll(){
+        Map<Integer, Map<LocalTime, Task>> map = new HashMap<>();
+        for (int userId : userRepository.findAll().stream().map(User::getTelegramId).toList()) {
             if (notificationService.checkMorningNotification(userId)) {
                 Map<LocalTime, Task> userTasks = getTasksForToday(userId);
                 map.put(userId, userTasks);
@@ -102,56 +89,41 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public Map<LocalTime, Task> getTasksForToday(long userId){
+    public Map<LocalTime, Task> getTasksForToday(int userId) {
         Map<LocalTime, Task> userTasks = new TreeMap<>();
-        if (getTasks(userId) != null) {
-            for (Map.Entry<Long, Task> entry : getTasks(userId).entrySet()) {
-                entry.getValue().setId(entry.getKey());
-                if (validationService.checkDateMatch(userId ,entry.getValue())) {
-                    userTasks.put(entry.getValue().getTime(), entry.getValue());
+        if (getTasksByUser(userId) != null || !getTasksByUser(userId).isEmpty()) {
+            for (Task task : getTasksByUser(userId)) {
+                if (validationService.checkDateMatch(userId, task)) {
+                    userTasks.put(task.getTime(), task);
                 }
             }
+
         }
         return userTasks;
     }
 
     @Override
-    public void clearTasks(CheckTask filter){
-        for (Long id : getUsersIds()) {
-            for (Map.Entry<Long, Task> taskEntry : getTasks(id).entrySet()) {
-                if (taskEntry != null && filter.checkTask(taskEntry.getValue())){
-                    removeTask(taskEntry.getKey(), id);
+    public void clearTasks(CheckTask filter) {
+        for (int userId : userRepository.findAll().stream().map(User::getTelegramId).toList()) {
+            for (Task task : getTasksByUser(userId)) {
+                if (filter.checkTask(task)) {
+                    taskRepository.delete(task);
                 }
             }
         }
-
     }
 
-    // ================================================================================================================
-    // Files
-    @PostConstruct
-    private void init() {
-        readFromFile();
-    }
-
-    private void saveToFile() {
-        try {
-            String json = mapper.writeValueAsString(taskMap);
-            fileService.saveTasksToFile(json);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+    private String validateDate(String date) {
+        if (date.matches("\\d{4}.\\d{2}.\\d{2}")) {
+            date = date.replaceAll("\\.", "-");
         }
+        return date;
     }
 
-    private void readFromFile() {
-        String json = fileService.readTasksFromFile();
-        try {
-            if (!json.isBlank()) {
-                taskMap = mapper.readValue(json, new TypeReference<Map<Long, Map<Long, Task>>>() {
-                });
-            }
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+    private String validateTime(String time) {
+        if (time.matches("\\d{2}.\\d{2}")) {
+            time = time.replaceAll("\\.", ":");
         }
+        return time;
     }
 }

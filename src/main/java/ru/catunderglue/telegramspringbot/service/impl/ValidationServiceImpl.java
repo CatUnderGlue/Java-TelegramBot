@@ -19,8 +19,8 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     @Override
-    public boolean checkDateMatch(Long userId ,Task task) {
-        String timezone = notificationService.getUserTimezone(userId).getTimezone();
+    public boolean checkDateMatch(int userId ,Task task) {
+        String timezone = notificationService.getUserTimezone(userId);
         ZonedDateTime dateTime = ZonedDateTime.now(ZoneId.of(timezone));
         return task.getDate().equals(dateTime.toLocalDate());
     }

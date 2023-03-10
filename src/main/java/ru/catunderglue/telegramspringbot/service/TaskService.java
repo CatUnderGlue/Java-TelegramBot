@@ -2,81 +2,65 @@ package ru.catunderglue.telegramspringbot.service;
 
 import ru.catunderglue.telegramspringbot.model.Task;
 
+import java.sql.SQLException;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public interface TaskService {
 
     /**
-     * Создание новой задачи и добавление её в taskMap
-     *
-     * @param title Заголовок задачи
-     * @param description Описание задачи
-     * @param date Дата выполнения
-     * @param time Время выполнения
-     * @param userId Id пользователя
-     * @return Id пользователя
+     * @param title       Название задачи
+     * @param description Описание для задачи
+     * @param date        Дата выполнения
+     * @param time        Время выполнения
+     * @param userId      id пользователя
      */
-    Long createTask(String title, String description, String date, String time, long userId);
+    void create(String title, String description, String date, String time, long userId);
 
     /**
-     * Получение всех задач конкретного пользователя
-     *
-     * @param userId Id пользователя
-     * @return Map(Id задачи, задача)
+     * @return Все задачи из бд
      */
-    Map<Long, Task> getTasks(long userId);
+    List<Task> readAll();
 
     /**
-     * Получение id всех пользователей
-     *
-     * @return Set(id пользователей)
+     * @param id id задачи
+     * @return Задачу по заданному id
      */
-    Set<Long> getUsersIds();
+    Task readOne(int id);
 
     /**
-     * Получение задачи по её id от конкретного пользователя
-     *
-     * @param id Id задачи
-     * @param userId Id пользователя
-     * @return Искомая задача
+     * @param task Изменённая задача
+     * @param id   id старой задачи
+     * @return Успешно прошли изменения или нет
      */
-    Task getTaskById(Long id, long userId);
+    boolean update(Task task, int id);
 
     /**
-     * Обновление уже существующей задачи
-     *
-     * @param id Id задачи
-     * @param task Новая задача
-     * @param userId Id пользователя
-     * @return Обновлённая задача
+     * @param id id задачи
+     * @return Успешно прошло удаление задачи или нет
      */
-    Task updateTask(Long id, Task task, long userId);
+    boolean delete(int id);
 
     /**
-     * Удаление задачи по Id для конкретного пользователя
-     *
-     * @param id Id задачи
-     * @param userId Id пользователя
-     * @return Удалённая задача
+     * @param userId id пользователя
+     * @return Список с задачами указанного пользователя
      */
-    Task removeTask(Long id, long userId);
+    List<Task> getTasksByUser(int userId);
 
     /**
-     * Получение задач на сегодня для всех пользователей
-     *
-     * @return Карта (Id пользователя, Карта(Время, Задача))
+     * @return Получение задач на день для всех
      */
-    Map<Long, Map<LocalTime, Task>> getTaskByDayForAll();
+    Map<Integer, Map<LocalTime, Task>> getTaskByDayForAll() throws SQLException;
 
     /**
-     * Получение задач на сегодня для конкретного пользователя
-     *
-     * @param userId Id пользователя
-     * @return Карта(Время, Задача)
+     * @param userId id пользователя
+     * @return Карту с ключём-время и значением-задача на текущий день для конкретного пользователя
      */
-    Map<LocalTime, Task> getTasksForToday(long userId);
+    Map<LocalTime, Task> getTasksForToday(int userId);
 
+    /**
+     * @param filter Условия очищения задач (lambda)
+     */
     void clearTasks(CheckTask filter);
 }

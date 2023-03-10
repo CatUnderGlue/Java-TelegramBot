@@ -1,6 +1,6 @@
 package ru.catunderglue.telegramspringbot.model.enums;
 
-public enum Timezone {
+public enum Timezones {
     KALININGRAD("Europe/Kaliningrad"),
     MOSCOW("Europe/Moscow"),
     SAMARA("Europe/Samara"),
@@ -15,7 +15,7 @@ public enum Timezone {
 
     final String timezone;
 
-    Timezone(String timezone) {
+    Timezones(String timezone) {
         this.timezone = timezone;
     }
 
