@@ -10,5 +10,5 @@ public interface ValidationService {
      * @param task   Задача пользователя
      * @return Совпала(true)/Не совпала(false)
      */
-    boolean checkDateMatch(Long userId ,Task task);
+    boolean checkDateMatch(int userId ,Task task);
 }

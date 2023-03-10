@@ -1,57 +1,61 @@
 package ru.catunderglue.telegramspringbot.service;
 
-import ru.catunderglue.telegramspringbot.model.enums.Timezone;
+import ru.catunderglue.telegramspringbot.model.enums.Timezones;
 
 public interface NotificationService {
     /**
-     * Установка утреннего уведомления
-     *
-     * @param userID - Id пользователя
-     * @param toggle - true(Вкл)/false(Выкл)
+     * @param userId id пользователя
+     * @param toggle включён/выключен
+     * @return успешно прошли изменения или нет
      */
-    void setMorningNotification(Long userID, Boolean toggle);
+    boolean setMorningNotification(Integer userId, Boolean toggle);
 
     /**
-     * Установка уведомления: за 30 минут до начала
-     *
-     * @param userID - Id пользователя
-     * @param toggle - true(Вкл)/false(Выкл)
+     * @param userId id пользователя
+     * @param toggle включён/выключен
+     * @return успешно прошли изменения или нет
      */
-    void setBeforeTaskNotification(Long userID, Boolean toggle);
+    boolean setBeforeTaskNotification(Integer userId, Boolean toggle);
 
     /**
-     * Установка всех уведомлений
-     *
-     * @param userId - Id пользователя
-     * @param toggle - true(Вкл)/false(Выкл)
+     * @param userId id пользователя
+     * @param toggle включены/выключены
      */
-    void setAllNotification(Long userId, Boolean toggle);
-
-    void setUserTimezone(Long userId, Timezone timezone);
-
-    Timezone getUserTimezone(Long userId);
+    void setAllNotification(Integer userId, Boolean toggle);
 
     /**
-     * Проверка состояния утреннего уведомления
-     *
-     * @param userID - Id пользователя
-     * @return true(Вкл)/false(Выкл)
+     * @param userId    id пользователя
+     * @param timezones часовой пояс
      */
-    boolean checkMorningNotification(Long userID);
+    void setUserTimezone(Integer userId, Timezones timezones);
 
     /**
-     * Проверка состояния уведомления: за 30 минут до начала
-     *
-     * @param userID - Id пользователя
-     * @return true(Вкл)/false(Выкл)
+     * @param userId id пользователя
+     * @return часовой пояс в формате "Asia/Yekaterinburg"
      */
-    boolean checkBeforeTaskNotification(Long userID);
+    String getUserTimezone(Integer userId);
 
     /**
-     * Наличие пользователя в карте с уведомлениями
-     *
-     * @param userId - Id пользователя
-     * @return true(есть)/false(нет)
+     * @param userId id пользователя
+     * @return включены или выключены утренние уведомления
      */
-    boolean isContains(Long userId);
+    boolean checkMorningNotification(Integer userId);
+
+    /**
+     * @param userId id пользователя
+     * @return включены или выключены уведомления перед началом задачи
+     */
+    boolean checkBeforeTaskNotification(Integer userId);
+
+    /**
+     * @param userId id пользователя
+     * @return есть пользователь в таблице с уведомлениями или нет
+     */
+    boolean isContains(Integer userId);
+
+    /**
+     * @param userId id пользователя
+     * @return есть пользователь в таблице с часовыми поясами или нет
+     */
+    boolean isTimezoneContains(Integer userId);
 }

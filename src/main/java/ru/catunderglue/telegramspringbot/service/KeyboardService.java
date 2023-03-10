@@ -25,7 +25,17 @@ public interface KeyboardService {
      */
     InlineKeyboardMarkup getBeforeTaskNotificationKeyboard();
 
+    /**
+     * Создание клавиатуры для всех уведомлений
+     *
+     * @return InlineKeyboardMarkup уведомления
+     */
     InlineKeyboardMarkup getNotificationsKeyboard();
 
+    /**
+     * Создание клавиатуры часовых поясов
+     *
+     * @return InlineKeyboardMarkup часовые пояса
+     */
     InlineKeyboardMarkup getTimezonesKeyboard();
 }

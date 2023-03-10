@@ -1,6 +1,5 @@
 package ru.catunderglue.telegramspringbot;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -10,11 +9,14 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.catunderglue.telegramspringbot.config.BotConfig;
 import ru.catunderglue.telegramspringbot.model.Task;
-import ru.catunderglue.telegramspringbot.model.enums.Timezone;
+import ru.catunderglue.telegramspringbot.model.User;
+import ru.catunderglue.telegramspringbot.model.enums.Timezones;
 import ru.catunderglue.telegramspringbot.service.KeyboardService;
 import ru.catunderglue.telegramspringbot.service.NotificationService;
 import ru.catunderglue.telegramspringbot.service.TaskService;
+import ru.catunderglue.telegramspringbot.service.UserService;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -22,7 +24,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-@Slf4j
 @Component
 @EnableScheduling
 public class TelegramBot extends TelegramLongPollingBot {
@@ -30,17 +31,19 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final TaskService taskService;
     private final NotificationService notificationService;
     private final KeyboardService keyboardService;
+    private final UserService userService;
 
     private static final String separator = "=====================================";
 
     public TelegramBot(BotConfig config,
                        TaskService taskService,
                        NotificationService notificationService,
-                       KeyboardService keyboardService) {
+                       KeyboardService keyboardService, UserService userService) {
         this.config = config;
         this.taskService = taskService;
         this.notificationService = notificationService;
         this.keyboardService = keyboardService;
+        this.userService = userService;
     }
 
     @Override
@@ -69,32 +72,33 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     // /menu
-    private void menuCommandReceived(long chatId, Update update) {
-        log.info("/menu command used. " + userInfo(update));
+    private void menuCommandReceived(int chatId, Update update) {
         SendMessage message = buildMessage(chatId, "Welcome, " + update.getMessage().getChat().getFirstName() + " ^-^\n");
         message.setReplyMarkup(keyboardService.getMenuKeyboard());
         sendMessage(message);
-        // Включение уведомлений, если пользователь первый раз использует бота
+        // Инициализирует базы данных, если пользователь первый раз использует бота
+        if (!userService.isContains(chatId)){
+            userService.create(new User(chatId, update.getMessage().getChat().getFirstName()));
+        }
         if (!notificationService.isContains(chatId)) {
             notificationService.setAllNotification(chatId, true);
         }
-        if (notificationService.getUserTimezone(chatId) == null) {
-            notificationService.setUserTimezone(chatId, Timezone.MOSCOW);
+        if (!notificationService.isTimezoneContains(chatId)) {
+            notificationService.setUserTimezone(chatId, Timezones.MOSCOW);
         }
     }
 
     // /id
-    private void idCommandReceived(long chatId, long userId, Update update) {
+    private void idCommandReceived(int chatId, long userId) {
         String answer = "Your id: " + userId;
-        log.info("/id command used. " + userInfo(update));
         buildMessage(chatId, answer);
     }
 
     // ================================================================================================================
     // Tasks
     // /create_task
-    private void createTaskCommandReceived(long chatId, Update update) {
-        String timezone = notificationService.getUserTimezone(chatId).getTimezone();
+    private void createTaskCommandReceived(int chatId, Update update) {
+        String timezone = notificationService.getUserTimezone(chatId);
         LocalDate now = ZonedDateTime.now(ZoneId.of(timezone)).toLocalDate();
         if (update.getMessage() == null || update.getMessage().getText().equals("/create_task")) {
             sendMessage(buildMessage(chatId, "Чтобы создать задачу, введите эту команду в таком формате:\nСимволы \"|\" обязательны."));
@@ -103,33 +107,30 @@ public class TelegramBot extends TelegramLongPollingBot {
             try {
                 String[] messageParts = update.getMessage().getText().split("\s", 2);
                 String[] taskParts = messageParts[1].split("\\|");
-                Long id = taskService.createTask(taskParts[0], taskParts[1], taskParts[2], taskParts[3], chatId);
-                sendMessage(buildMessage(chatId, String.format("Задача под номером %d успешно создана!", id)));
-                log.info("/create_task command used. " + userInfo(update) + "\nCreated task: " + taskService.getTaskById(id, chatId));
+                taskService.create(taskParts[0], taskParts[1], taskParts[2], taskParts[3], chatId);
+                sendMessage(buildMessage(chatId, "Задача успешно создана!"));
             } catch (Exception e) {
-                log.error("/create_task command unsuccessful used. " + userInfo(update));
                 sendMessage(buildMessage(chatId, "Ошибка в создании задачи, придерживайтесь указанного формата."));
             }
         }
     }
 
     // /get_tasks
-    private void getTasksCommandReceived(long chatId, Update update) {
+    private void getTasksCommandReceived(int chatId) {
         StringBuilder builder = new StringBuilder();
-        Map<Long, Task> tasks = taskService.getTasks(chatId);
+        List<Task> tasks = taskService.getTasksByUser(chatId);
         if (tasks == null || tasks.size() == 0) {
             sendMessage(buildMessage(chatId, "У вас пока что нет задач :c"));
             return;
         }
-        for (Map.Entry<Long, Task> taskEntry : tasks.entrySet()) {
-            builder.append("id: ").append(taskEntry.getKey()).append("\n").append(taskEntry.getValue());
+        for (Task task : tasks) {
+            builder.append("id: ").append(task.getId()).append("\n").append(task);
         }
         sendMessage(buildMessage(chatId, builder.toString()));
-        log.info("/get_tasks command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
     }
 
-    private void updateTaskCommandReceived(long chatId, Update update) {
-        String timezone = notificationService.getUserTimezone(chatId).getTimezone();
+    private void updateTaskCommandReceived(int chatId, Update update) {
+        String timezone = notificationService.getUserTimezone(chatId);
         LocalDate now = ZonedDateTime.now(ZoneId.of(timezone)).toLocalDate();
         if (update.getMessage() == null || update.getMessage().getText().equals("/update_task")) {
             sendMessage(buildMessage(chatId, "Чтобы изменить задачу, введите эту команду в таком формате:\nСимволы \"|\" обязательны."));
@@ -137,16 +138,14 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else {
             try {
                 String[] messageParts = update.getMessage().getText().split("\s", 3);
-                Long id = Long.parseLong(messageParts[1]);
+                int id = Integer.parseInt(messageParts[1]);
                 String[] taskParts = messageParts[2].split("\\|");
                 LocalDate parsedDate = LocalDate.parse(taskParts[2]);
                 LocalTime parsedTime = LocalTime.parse(taskParts[3]);
-                Task updateTask = new Task(taskParts[0], taskParts[1], parsedDate, parsedTime);
-                taskService.updateTask(id, updateTask, chatId);
+                Task updateTask = new Task(chatId, taskParts[0], taskParts[1], parsedDate, parsedTime);
+                taskService.update(updateTask, id);
                 sendMessage(buildMessage(chatId, String.format("Задача под номером %d успешно обновлена!", id)));
-                log.info("/update_task command used. " + userInfo(update) + "\nUpdated task: " + taskService.getTaskById(id, chatId));
             } catch (Exception e) {
-                log.error("/update_task command unsuccessful used. " + userInfo(update));
                 sendMessage(buildMessage(chatId, "Ошибка в обновлении задачи, придерживайтесь указанного формата."));
             }
         }
@@ -165,19 +164,18 @@ public class TelegramBot extends TelegramLongPollingBot {
             return;
         }
         String[] messageParts = update.getMessage().getText().split("\s", 2);
-        Task removedTask = taskService.removeTask(Long.valueOf(messageParts[1]), chatId);
-        if (removedTask == null) {
-            sendMessage(buildMessage(chatId, "Задача под данным id не найдена."));
+        if (taskService.delete(Integer.parseInt(messageParts[1]))) {
+            sendMessage(buildMessage(chatId, "Задача под номером " + Long.valueOf(messageParts[1]) + " успешно удалена."));
             return;
         }
-        log.info("/delete_task command used by " + update.getMessage().getChat().getFirstName() + ". Deleted task:\n " + removedTask);
-        sendMessage(buildMessage(chatId, "Задача под номером " + Long.valueOf(messageParts[1]) + " успешно удалена."));
+        sendMessage(buildMessage(chatId, "Задача под данным id не найдена."));
+
     }
 
     // /get_tasks_for_today
-    private void getTasksForTodayCommandReceived(long chatId, Update update) {
+    private void getTasksForTodayCommandReceived(int chatId) {
         Map<LocalTime, Task> tasks = taskService.getTasksForToday(chatId);
-        String timezone = notificationService.getUserTimezone(chatId).getTimezone();
+        String timezone = notificationService.getUserTimezone(chatId);
         if (!tasks.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("Ваши задачи на ").append(ZonedDateTime.now(ZoneId.of(timezone)).toLocalDate()).append(": \n").append(separator).append("\n");
@@ -190,11 +188,10 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else {
             sendMessage(buildMessage(chatId, "Список задач на сегодня пуст"));
         }
-        log.info("/get_tasks_for_today command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
     }
 
     @Scheduled(cron = "0 * * * * *")
-    private void clearOldTask(){
+    private void clearOldTask() {
         taskService.clearTasks((Task task) -> task.getDate().plusDays(1).isBefore(LocalDate.now()));
     }
 
@@ -203,63 +200,71 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Scheduled(cron = "0 0 0 * * *")
     private void sendAllUsersTasksForToday() {
-        Map<Long, Map<LocalTime, Task>> tasksByDay = taskService.getTaskByDayForAll();
-        for (Map.Entry<Long, Map<LocalTime, Task>> entry : tasksByDay.entrySet()) {
-            String timezone = notificationService.getUserTimezone(entry.getKey()).getTimezone();
-            if (ZonedDateTime.now(ZoneId.of(timezone)).toLocalTime().getHour() == 6) {
-                if (!entry.getValue().isEmpty()) {
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("Ваши задачи на ")
-                            .append(LocalDate.now())
-                            .append(": \n")
-                            .append(separator)
-                            .append("\n");
-                    for (Map.Entry<LocalTime, Task> taskEntry : entry.getValue().entrySet()) {
-                        sb.append("Id: ")
-                                .append(taskEntry.getValue().getId())
-                                .append("\n").append(taskEntry.getValue())
+        try {
+            Map<Integer, Map<LocalTime, Task>> tasksByDay = taskService.getTaskByDayForAll();
+            for (Map.Entry<Integer, Map<LocalTime, Task>> entry : tasksByDay.entrySet()) {
+                String timezone = notificationService.getUserTimezone(entry.getKey());
+                if (ZonedDateTime.now(ZoneId.of(timezone)).toLocalTime().getHour() == 6) {
+                    if (!entry.getValue().isEmpty()) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("Ваши задачи на ")
+                                .append(LocalDate.now())
+                                .append(": \n")
                                 .append(separator)
                                 .append("\n");
+                        for (Map.Entry<LocalTime, Task> taskEntry : entry.getValue().entrySet()) {
+                            sb.append("Id: ")
+                                    .append(taskEntry.getValue().getId())
+                                    .append("\n").append(taskEntry.getValue())
+                                    .append(separator)
+                                    .append("\n");
+                        }
+                        sendMessage(buildMessage(entry.getKey(), sb.toString()));
                     }
-                    sendMessage(buildMessage(entry.getKey(), sb.toString()));
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     @Scheduled(cron = "0 * * * * *")
     private void sendAllUsersTaskNotification() {
-        Map<Long, Map<LocalTime, Task>> tasksByDay = taskService.getTaskByDayForAll();
-        for (Map.Entry<Long, Map<LocalTime, Task>> entry : tasksByDay.entrySet()) {
-            String timezone = notificationService.getUserTimezone(entry.getKey()).getTimezone();
-            LocalTime now = ZonedDateTime.now(ZoneId.of(timezone)).toLocalTime();
-            if (!notificationService.isContains(entry.getKey())) {
-                notificationService.setAllNotification(entry.getKey(), true);
-            }
-            boolean flag = false;
-            if (notificationService.checkBeforeTaskNotification(entry.getKey()) && !entry.getValue().isEmpty()) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("Напоминаю, что через 30 минут у вас есть запланированная задача: \n")
-                        .append(separator)
-                        .append("\n");
-                for (Map.Entry<LocalTime, Task> taskEntry : entry.getValue().entrySet()) {
-                    if (taskEntry.getKey().minusMinutes(30).getHour() == now.getHour() && taskEntry.getKey().minusMinutes(30).getMinute() == now.getMinute()) {
-                        sb.append("Id: ")
-                                .append(taskEntry.getValue().getId())
-                                .append("\n").append(taskEntry.getValue())
-                                .append(separator)
-                                .append("\n");
-                        flag = true;
+        try {
+            Map<Integer, Map<LocalTime, Task>> tasksByDay = taskService.getTaskByDayForAll();
+            for (Map.Entry<Integer, Map<LocalTime, Task>> entry : tasksByDay.entrySet()) {
+                String timezone = notificationService.getUserTimezone(entry.getKey());
+                LocalTime now = ZonedDateTime.now(ZoneId.of(timezone)).toLocalTime();
+                if (!notificationService.isContains(entry.getKey())) {
+                    notificationService.setAllNotification(entry.getKey(), true);
+                }
+                boolean flag = false;
+                if (notificationService.checkBeforeTaskNotification(entry.getKey()) && !entry.getValue().isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Напоминаю, что через 30 минут у вас есть запланированная задача: \n")
+                            .append(separator)
+                            .append("\n");
+                    for (Map.Entry<LocalTime, Task> taskEntry : entry.getValue().entrySet()) {
+                        if (taskEntry.getKey().minusMinutes(30).getHour() == now.getHour() && taskEntry.getKey().minusMinutes(30).getMinute() == now.getMinute()) {
+                            sb.append("Id: ")
+                                    .append(taskEntry.getValue().getId())
+                                    .append("\n").append(taskEntry.getValue())
+                                    .append(separator)
+                                    .append("\n");
+                            flag = true;
+                        }
+                    }
+                    if (flag) {
+                        sendMessage(buildMessage(entry.getKey(), sb.toString()));
                     }
                 }
-                if (flag) {
-                    sendMessage(buildMessage(entry.getKey(), sb.toString()));
-                }
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 
-    private void setMorningNotificationCommandReceived(Long chatId, Update update) {
+    private void setMorningNotificationCommandReceived(int chatId, Update update) {
         if (update.getCallbackQuery().getData().strip().equals("/set_morning_notification")) {
             SendMessage message = buildMessage(chatId, "Настройка утреннего уведомления");
             message.setReplyMarkup(keyboardService.getMorningNotificationKeyboard());
@@ -281,10 +286,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
 
         sendMessage(buildMessage(chatId, "Утреннее уведомление " + (flag ? "включено." : "выключено.")));
-        log.info("/set_morning_notification command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
     }
 
-    private void setBeforeTaskNotificationCommandReceived(Long chatId, Update update) {
+    private void setBeforeTaskNotificationCommandReceived(int chatId, Update update) {
         if (update.getCallbackQuery().getData().strip().equals("/set_before_task_notification")) {
             SendMessage message = buildMessage(chatId, "Настройка уведомления: за 30 минут до начала");
             message.setReplyMarkup(keyboardService.getBeforeTaskNotificationKeyboard());
@@ -306,10 +310,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
 
         sendMessage(buildMessage(chatId, "Уведомление: за 30 минут до начала " + (flag ? "включено." : "выключено.")));
-        log.info("/set_before_task_notification command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
     }
 
-    private void setUserTimezoneCommandReceived(Long chatId, Update update) {
+    private void setUserTimezoneCommandReceived(int chatId, Update update) {
         if (update.getCallbackQuery().getData().strip().equals("/set_user_timezone")) {
             SendMessage message = buildMessage(chatId, "Настройка вашего часового пояса.");
             message.setReplyMarkup(keyboardService.getTimezonesKeyboard());
@@ -318,33 +321,32 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
         String[] messageParts = update.getCallbackQuery().getData().split("\s", 2);
         if (messageParts[1].equals("check")) {
-            String timezone = notificationService.getUserTimezone(chatId).getTimezone();
+            String timezone = notificationService.getUserTimezone(chatId);
             LocalTime now = ZonedDateTime.now(ZoneId.of(timezone)).toLocalTime();
             sendMessage(buildMessage(chatId, "Ваше время: " + now.format(DateTimeFormatter.ofPattern("HH:mm")) + "\nВаш часовой пояс: " + timezone));
             return;
         }
-        Timezone timezone = switch (messageParts[1]) {
-            case "KALININGRAD" -> Timezone.KALININGRAD;
-            case "MOSCOW" -> Timezone.MOSCOW;
-            case "SAMARA" -> Timezone.SAMARA;
-            case "YEKATERINBURG" -> Timezone.YEKATERINBURG;
-            case "OMSK" -> Timezone.OMSK;
-            case "KRASNOYARSK" -> Timezone.KRASNOYARSK;
-            case "IRKUTSK" -> Timezone.IRKUTSK;
-            case "YAKUTSK" -> Timezone.YAKUTSK;
-            case "VLADIVOSTOK" -> Timezone.VLADIVOSTOK;
-            case "SREDNEKOLYMSK" -> Timezone.SREDNEKOLYMSK;
-            case "KAMCHATSK" -> Timezone.KAMCHATSK;
-            default -> Timezone.MOSCOW;
+        Timezones timezones = switch (messageParts[1]) {
+            case "KALININGRAD" -> Timezones.KALININGRAD;
+            case "MOSCOW" -> Timezones.MOSCOW;
+            case "SAMARA" -> Timezones.SAMARA;
+            case "YEKATERINBURG" -> Timezones.YEKATERINBURG;
+            case "OMSK" -> Timezones.OMSK;
+            case "KRASNOYARSK" -> Timezones.KRASNOYARSK;
+            case "IRKUTSK" -> Timezones.IRKUTSK;
+            case "YAKUTSK" -> Timezones.YAKUTSK;
+            case "VLADIVOSTOK" -> Timezones.VLADIVOSTOK;
+            case "SREDNEKOLYMSK" -> Timezones.SREDNEKOLYMSK;
+            case "KAMCHATSK" -> Timezones.KAMCHATSK;
+            default -> Timezones.MOSCOW;
         };
 
-        notificationService.setUserTimezone(chatId, timezone);
+        notificationService.setUserTimezone(chatId, timezones);
 
-        sendMessage(buildMessage(chatId, "Ваш часовой пояс: " + timezone));
-        log.info("/set_user_timezone command used by " + update.getCallbackQuery().getMessage().getChat().getFirstName());
+        sendMessage(buildMessage(chatId, "Ваш часовой пояс: " + timezones));
     }
 
-    private void notificationsCommandReceived(Long chatId, Update update) {
+    private void notificationsCommandReceived(int chatId) {
         SendMessage message = buildMessage(chatId, "Настройка уведомлений");
         message.setReplyMarkup(keyboardService.getNotificationsKeyboard());
         sendMessage(message);
@@ -373,24 +375,24 @@ public class TelegramBot extends TelegramLongPollingBot {
         try {
             execute(message);
         } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
         }
     }
 
     private void menu(String command, Long chatId, Update update) {
         command = command.strip().split("\s", 2)[0];
+        int id = Math.toIntExact(chatId);
         switch (command) {
-            case "/id" -> idCommandReceived(chatId, update.getMessage().getChat().getId(), update);
-            case "/menu", "/start" -> menuCommandReceived(chatId, update);
-            case "/create_task" -> createTaskCommandReceived(chatId, update);
-            case "/get_tasks" -> getTasksCommandReceived(chatId, update);
-            case "/delete_task" -> deleteTaskCommandReceived(chatId, update);
-            case "/get_tasks_for_today" -> getTasksForTodayCommandReceived(chatId, update);
-            case "/set_morning_notification" -> setMorningNotificationCommandReceived(chatId, update);
-            case "/set_before_task_notification" -> setBeforeTaskNotificationCommandReceived(chatId, update);
-            case "/set_user_timezone" -> setUserTimezoneCommandReceived(chatId, update);
-            case "/update_task" -> updateTaskCommandReceived(chatId, update);
-            case "/notifications" -> notificationsCommandReceived(chatId, update);
+            case "/id" -> idCommandReceived(id, update.getMessage().getChat().getId());
+            case "/menu", "/start" -> menuCommandReceived(id, update);
+            case "/create_task" -> createTaskCommandReceived(id, update);
+            case "/get_tasks" -> getTasksCommandReceived(id);
+            case "/delete_task" -> deleteTaskCommandReceived(id, update);
+            case "/get_tasks_for_today" -> getTasksForTodayCommandReceived(id);
+            case "/set_morning_notification" -> setMorningNotificationCommandReceived(id, update);
+            case "/set_before_task_notification" -> setBeforeTaskNotificationCommandReceived(id, update);
+            case "/set_user_timezone" -> setUserTimezoneCommandReceived(id, update);
+            case "/update_task" -> updateTaskCommandReceived(id, update);
+            case "/notifications" -> notificationsCommandReceived(id);
             default -> buildMessage(chatId, "Command was not recognize");
         }
     }

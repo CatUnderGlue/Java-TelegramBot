@@ -1,17 +1,14 @@
 package ru.catunderglue.telegramspringbot.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import jakarta.annotation.PostConstruct;
+
 import org.springframework.stereotype.Service;
-import ru.catunderglue.telegramspringbot.model.enums.Timezone;
-import ru.catunderglue.telegramspringbot.service.FileService;
+import ru.catunderglue.telegramspringbot.model.Timezone;
+import ru.catunderglue.telegramspringbot.model.enums.Timezones;
+import ru.catunderglue.telegramspringbot.repository.NotificationRepository;
+import ru.catunderglue.telegramspringbot.repository.TimezoneRepository;
 import ru.catunderglue.telegramspringbot.service.NotificationService;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class NotificationServiceImpl implements NotificationService {
@@ -19,116 +16,81 @@ public class NotificationServiceImpl implements NotificationService {
         MORNING, BEFORE_TASK
     }
 
-    private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
-    HashMap<Long, Map<Notification, Boolean>> usersNotifications = new HashMap<>();
-    HashMap<Long, Timezone> timezones = new HashMap<>();
+    private final TimezoneRepository usersTimezones;
+    private final NotificationRepository usersNotifications;
 
-    private final FileService fileService;
-
-    public NotificationServiceImpl(FileService fileService) {
-        this.fileService = fileService;
+    public NotificationServiceImpl(TimezoneRepository usersTimezones, NotificationRepository usersNotifications) {
+        this.usersTimezones = usersTimezones;
+        this.usersNotifications = usersNotifications;
     }
 
     @Override
-    public void setMorningNotification(Long userId, Boolean toggle) {
-        setNotification(userId, Notification.MORNING, toggle);
-    }
-
-    @Override
-    public void setBeforeTaskNotification(Long userId, Boolean toggle) {
-        setNotification(userId, Notification.BEFORE_TASK, toggle);
-    }
-
-    @Override
-    public void setAllNotification(Long userId, Boolean toggle) {
-        setMorningNotification(userId, toggle);
-        setBeforeTaskNotification(userId, toggle);
-    }
-
-    @Override
-    public void setUserTimezone(Long userId, Timezone timezone){
-        timezones.put(userId, timezone);
-        saveTimezonesToFile();
-    }
-
-    @Override
-    public Timezone getUserTimezone(Long userId){
-        return timezones.get(userId);
-    }
-
-    @Override
-    public boolean checkMorningNotification(Long userId) {
-        if (usersNotifications.containsKey(userId)) {
-            return usersNotifications.get(userId).get(Notification.MORNING);
+    public boolean setMorningNotification(Integer userId, Boolean toggle) {
+        if (usersNotifications.existsById(userId)){
+            ru.catunderglue.telegramspringbot.model.Notification notification = usersNotifications.getOne(userId);
+            notification.setMorning(toggle);
+            usersNotifications.save(notification);
+            return true;
         }
         return false;
     }
 
     @Override
-    public boolean checkBeforeTaskNotification(Long userId) {
-        return usersNotifications.get(userId).get(Notification.BEFORE_TASK);
+    public boolean setBeforeTaskNotification(Integer userId, Boolean toggle) {
+        if (usersNotifications.existsById(userId)){
+            ru.catunderglue.telegramspringbot.model.Notification notification = usersNotifications.getOne(userId);
+            notification.setBeforeTask(toggle);
+            usersNotifications.save(notification);
+            return true;
+        }
+        return false;
     }
 
     @Override
-    public boolean isContains(Long userId) {
-        return usersNotifications.containsKey(userId);
-    }
-
-    private void setNotification(Long userId, Notification notification, Boolean toggle) {
-        if (!usersNotifications.containsKey(userId)) {
-            usersNotifications.put(userId, new HashMap<>());
-        }
-        usersNotifications.get(userId).put(notification, toggle);
-        saveNotificationsToFile();
-    }
-
-    // ================================================================================================================
-    // Files
-    @PostConstruct
-    private void init() {
-        readNotificationsFromFile();
-        readTimezonesFromFile();
-    }
-
-    private void saveNotificationsToFile() {
-        try {
-            String json = mapper.writeValueAsString(usersNotifications);
-            fileService.saveNotificationsToFile(json);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+    public void setAllNotification(Integer userId, Boolean toggle) {
+        if (!setMorningNotification(userId, toggle) && !setBeforeTaskNotification(userId, toggle)){
+            usersNotifications.save(new ru.catunderglue.telegramspringbot.model.Notification(userId, toggle, toggle));
         }
     }
 
-    private void readNotificationsFromFile() {
-        String json = fileService.readNotificationsFromFile();
-        try {
-            if (!json.isBlank()) {
-                usersNotifications = mapper.readValue(json, new TypeReference<HashMap<Long, Map<Notification, Boolean>>>() {
-                });
-            }
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public void setUserTimezone(Integer userId, Timezones timezones){
+        usersTimezones.save(new Timezone(userId, timezones.getTimezone()));
     }
 
-    private void saveTimezonesToFile() {
-        try {
-            String json = mapper.writeValueAsString(timezones);
-            fileService.saveTimezonesToFile(json);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+    @Override
+    public String getUserTimezone(Integer userId){
+        if (usersTimezones.existsById(userId)){
+            return usersTimezones.findById(userId).get().getName();
         }
+        return null;
     }
 
-    private void readTimezonesFromFile() {
-        String json = fileService.readTimezonesFromFile();
-        try {
-            if (!json.isBlank()) {
-                timezones = mapper.readValue(json, new TypeReference<HashMap<Long, Timezone>>() {
-                });
-            }
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+    @Override
+    public boolean checkMorningNotification(Integer userId) {
+        Optional<ru.catunderglue.telegramspringbot.model.Notification> notification = usersNotifications.findById(userId);
+        if (usersNotifications.existsById(userId) && notification.isPresent()) {
+            return notification.get().isMorning();
         }
+        return false;
+    }
+
+    @Override
+    public boolean checkBeforeTaskNotification(Integer userId) {
+        Optional<ru.catunderglue.telegramspringbot.model.Notification> notification = usersNotifications.findById(userId);
+        if (usersNotifications.existsById(userId) && notification.isPresent()) {
+            return notification.get().isBeforeTask();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isContains(Integer userId) {
+        return usersNotifications.existsById(userId);
+    }
+
+    @Override
+    public boolean isTimezoneContains(Integer userId) {
+        return usersTimezones.existsById(userId);
     }
 }

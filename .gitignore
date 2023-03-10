@@ -31,3 +31,4 @@ build/
 
 ### VS Code ###
 .vscode/
+/src/main/java/ru/catunderglue/telegramspringbot/dao/DbConfig.java
