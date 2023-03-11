@@ -49,10 +49,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public Optional<Task> readOne(int id) {
-        if (taskRepository.existsById(id)){
-            return taskRepository.findById(id);
-        }
-        return Optional.empty();
+        return taskRepository.findById(id);
     }
 
     @Override
