@@ -109,6 +109,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                 String[] taskParts = messageParts[1].split("\\|");
                 taskService.create(taskParts[0], taskParts[1], taskParts[2], taskParts[3], chatId);
                 sendMessage(buildMessage(chatId, "Задача успешно создана!"));
+            } catch (IndexOutOfBoundsException e) {
+                sendMessage(buildMessage(chatId, "Неверный формат времени."));
             } catch (Exception e) {
                 sendMessage(buildMessage(chatId, e.getMessage()));
             }

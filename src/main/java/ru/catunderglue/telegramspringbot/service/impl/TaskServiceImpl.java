@@ -30,8 +30,8 @@ public class TaskServiceImpl implements TaskService {
     // ================================================================================================================
     // Tasks
     @Override
-    public void create(String title, String description, String date, String time, long userId) {
-        taskRepository.save(taskVerification(title, description, date, time, userId));
+    public Task create(String title, String description, String date, String time, long userId) {
+        return taskRepository.save(taskVerification(title, description, date, time, userId));
     }
 
     private Task taskVerification(String title, String description, String date, String time, long userId) throws DateTimeParseException, IllegalArgumentException {
@@ -117,7 +117,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private String validateDate(String date) {
-        if (!date.matches("\\d{4}(.|-)\\d{2}(.|-)\\d{2}")) {
+        if (date.isBlank() || !date.matches("\\d{4}(.|-)\\d{2}(.|-)\\d{2}")) {
             throw new IllegalArgumentException("Неверный формат даты.");
         }
         date = date.replaceAll("\\.", "-");
@@ -125,7 +125,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private String validateTime(String time) {
-        if (!time.matches("\\d{2}(.|:)\\d{2}")) {
+        if (time.isBlank() || !time.matches("\\d{2}(.|:)\\d{2}")) {
             throw new IllegalArgumentException("Неверный формат времени.");
         }
         time = time.replaceAll("\\.", ":");
