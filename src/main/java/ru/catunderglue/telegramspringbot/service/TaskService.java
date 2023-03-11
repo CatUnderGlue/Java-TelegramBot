@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public interface TaskService {
 
@@ -15,8 +16,9 @@ public interface TaskService {
      * @param date        Дата выполнения
      * @param time        Время выполнения
      * @param userId      id пользователя
+     * @return Созданная задача
      */
-    void create(String title, String description, String date, String time, long userId);
+    Task create(String title, String description, String date, String time, long userId);
 
     /**
      * @return Все задачи из бд
@@ -27,7 +29,7 @@ public interface TaskService {
      * @param id id задачи
      * @return Задачу по заданному id
      */
-    Task readOne(int id);
+    Optional<Task> readOne(int id);
 
     /**
      * @param task Изменённая задача
