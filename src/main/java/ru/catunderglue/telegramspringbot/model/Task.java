@@ -34,12 +34,24 @@ public class Task implements Comparable<Task>{
     @Column(name = "time")
     private LocalTime time;
 
-    public Task(long userId, String title, String description, LocalDate date, LocalTime time) {
+    public Task(long userId, String title, String description, LocalDate date, LocalTime time) throws IllegalArgumentException{
+        if (validateTaskTitleAndDesc(title, description)) {
+            this.title = title;
+            this.description = description;
+        }
         this.userId = userId;
-        this.title = title;
-        this.description = description;
         this.date = date;
         this.time = time;
+    }
+
+    private boolean validateTaskTitleAndDesc(String title, String description) {
+        if (title == null || title.isBlank() || title.isEmpty()) {
+            throw new IllegalArgumentException("Название не может быть пустым.");
+        }
+        if (description == null || description.isBlank() || description.isEmpty()) {
+            throw new IllegalArgumentException("Описание не может быть пустым.");
+        }
+        return true;
     }
 
     @Override
