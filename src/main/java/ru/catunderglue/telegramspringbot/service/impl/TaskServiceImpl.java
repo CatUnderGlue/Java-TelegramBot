@@ -10,6 +10,7 @@ import ru.catunderglue.telegramspringbot.service.*;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
@@ -34,7 +35,7 @@ public class TaskServiceImpl implements TaskService {
         taskRepository.save(taskVerification(title, description, date, time, userId));
     }
 
-    private Task taskVerification(String title, String description, String date, String time, long userId) {
+    private Task taskVerification(String title, String description, String date, String time, long userId) throws DateTimeParseException, IllegalArgumentException {
         date = validateDate(date);
         time = validateTime(time);
         LocalDate parsedDate = LocalDate.parse(date);
@@ -77,7 +78,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public Map<Integer, Map<LocalTime, Task>> getTaskByDayForAll(){
+    public Map<Integer, Map<LocalTime, Task>> getTaskByDayForAll() {
         Map<Integer, Map<LocalTime, Task>> map = new HashMap<>();
         for (int userId : userRepository.findAll().stream().map(User::getTelegramId).toList()) {
             if (notificationService.checkMorningNotification(userId)) {
@@ -114,16 +115,18 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private String validateDate(String date) {
-        if (date.matches("\\d{4}.\\d{2}.\\d{2}")) {
-            date = date.replaceAll("\\.", "-");
+        if (!date.matches("\\d{4}(.|-)\\d{2}(.|-)\\d{2}")) {
+            throw new IllegalArgumentException("Неверный формат даты.");
         }
+        date = date.replaceAll("\\.", "-");
         return date;
     }
 
     private String validateTime(String time) {
-        if (time.matches("\\d{2}.\\d{2}")) {
-            time = time.replaceAll("\\.", ":");
+        if (!time.matches("\\d{2}(.|:)\\d{2}")) {
+            throw new IllegalArgumentException("Неверный формат времени.");
         }
+        time = time.replaceAll("\\.", ":");
         return time;
     }
 }
