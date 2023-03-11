@@ -7,7 +7,6 @@ import ru.catunderglue.telegramspringbot.repository.TaskRepository;
 import ru.catunderglue.telegramspringbot.repository.UserRepository;
 import ru.catunderglue.telegramspringbot.service.*;
 
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
@@ -49,8 +48,11 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public Task readOne(int id) {
-        return taskRepository.getOne(id);
+    public Optional<Task> readOne(int id) {
+        if (taskRepository.existsById(id)){
+            return taskRepository.findById(id);
+        }
+        return Optional.empty();
     }
 
     @Override
