@@ -53,8 +53,8 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public boolean update(Task task, int id) {
-        if (taskRepository.existsById(id)) {
+    public boolean update(Task task, int id, long userId) {
+        if (taskRepository.existsByIdAndUserId(id, userId)) {
             task.setId(id);
             taskRepository.save(task);
             return true;
@@ -63,8 +63,8 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public boolean delete(int id) {
-        if (taskRepository.existsById(id)) {
+    public boolean delete(int id, long userId) {
+        if (taskRepository.existsByIdAndUserId(id, userId)) {
             taskRepository.deleteById(id);
             return true;
         }

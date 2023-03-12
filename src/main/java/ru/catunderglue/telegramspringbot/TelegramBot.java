@@ -147,7 +147,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 LocalDate parsedDate = LocalDate.parse(taskParts[2]);
                 LocalTime parsedTime = LocalTime.parse(taskParts[3]);
                 Task updateTask = new Task(chatId, taskParts[0], taskParts[1], parsedDate, parsedTime);
-                taskService.update(updateTask, id);
+                taskService.update(updateTask, id, chatId);
                 sendMessage(buildMessage(chatId, String.format("Задача под номером %d успешно обновлена!", id)));
             } catch (Exception e) {
                 sendMessage(buildMessage(chatId, "Ошибка в обновлении задачи, придерживайтесь указанного формата."));
@@ -168,7 +168,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             return;
         }
         String[] messageParts = update.getMessage().getText().split("\s", 2);
-        if (taskService.delete(Integer.parseInt(messageParts[1]))) {
+        if (taskService.delete(Integer.parseInt(messageParts[1]), chatId)) {
             sendMessage(buildMessage(chatId, "Задача под номером " + Long.valueOf(messageParts[1]) + " успешно удалена."));
             return;
         }
@@ -194,7 +194,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "@hourly")
     private void clearOldTask() {
         taskService.clearTasks((Task task) -> task.getDate().plusDays(1).isBefore(LocalDate.now()));
     }
@@ -202,7 +202,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     // ================================================================================================================
     // Notifications
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "@hourly")
     private void sendAllUsersTasksForToday() {
         try {
             Map<Integer, Map<LocalTime, Task>> tasksByDay = taskService.getTaskByDayForAll();
