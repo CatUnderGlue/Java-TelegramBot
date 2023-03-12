@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task, Integer> {
     List<Task> findAllByUserId(long userId);
+    boolean existsByIdAndUserId(int id, long userId);
 }

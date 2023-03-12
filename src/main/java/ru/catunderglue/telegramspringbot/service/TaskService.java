@@ -36,13 +36,13 @@ public interface TaskService {
      * @param id   id старой задачи
      * @return Успешно прошли изменения или нет
      */
-    boolean update(Task task, int id);
+    boolean update(Task task, int id, long userId);
 
     /**
      * @param id id задачи
      * @return Успешно прошло удаление задачи или нет
      */
-    boolean delete(int id);
+    boolean delete(int id, long userId);
 
     /**
      * @param userId id пользователя

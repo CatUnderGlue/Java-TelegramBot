@@ -79,33 +79,33 @@ class TaskServiceImplTest {
 
     @Test
     void shouldReturnTrueAfterUpdateTask() {
-        when(taskRepositoryMock.existsById(TASK_ID)).thenReturn(true);
+        when(taskRepositoryMock.existsByIdAndUserId(TASK_ID, VALID_USER_ID)).thenReturn(true);
         when(taskRepositoryMock.save(VALID_TASK)).thenReturn(VALID_TASK);
-        assertTrue(taskService.update(VALID_TASK, TASK_ID));
-        verify(taskRepositoryMock).existsById(TASK_ID);
+        assertTrue(taskService.update(VALID_TASK, TASK_ID, VALID_USER_ID));
+        verify(taskRepositoryMock).existsByIdAndUserId(TASK_ID, VALID_USER_ID);
         verify(taskRepositoryMock).save(VALID_TASK);
     }
 
     @Test
     void shouldReturnFalseAfterUpdateTask() {
-        when(taskRepositoryMock.existsById(TASK_ID)).thenReturn(false);
-        assertFalse(taskService.update(VALID_TASK, TASK_ID));
-        verify(taskRepositoryMock).existsById(TASK_ID);
+        when(taskRepositoryMock.existsByIdAndUserId(TASK_ID, VALID_USER_ID)).thenReturn(false);
+        assertFalse(taskService.update(VALID_TASK, TASK_ID, VALID_USER_ID));
+        verify(taskRepositoryMock).existsByIdAndUserId(TASK_ID, VALID_USER_ID);
     }
 
     @Test
     void shouldReturnTrueAfterDeleteTask() {
-        when(taskRepositoryMock.existsById(TASK_ID)).thenReturn(true);
-        assertTrue(taskService.delete(TASK_ID));
-        verify(taskRepositoryMock).existsById(TASK_ID);
+        when(taskRepositoryMock.existsByIdAndUserId(TASK_ID, VALID_USER_ID)).thenReturn(true);
+        assertTrue(taskService.delete(TASK_ID, VALID_USER_ID));
+        verify(taskRepositoryMock).existsByIdAndUserId(TASK_ID, VALID_USER_ID);
         verify(taskRepositoryMock).deleteById(TASK_ID);
     }
 
     @Test
     void shouldReturnFalseAfterDeleteTask() {
-        when(taskRepositoryMock.existsById(TASK_ID)).thenReturn(false);
-        assertFalse(taskService.delete(TASK_ID));
-        verify(taskRepositoryMock).existsById(TASK_ID);
+        when(taskRepositoryMock.existsByIdAndUserId(TASK_ID, VALID_USER_ID)).thenReturn(false);
+        assertFalse(taskService.delete(TASK_ID, VALID_USER_ID));
+        verify(taskRepositoryMock).existsByIdAndUserId(TASK_ID, VALID_USER_ID);
     }
 
     @Test
