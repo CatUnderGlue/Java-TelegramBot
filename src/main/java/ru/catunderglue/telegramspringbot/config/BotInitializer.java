@@ -1,5 +1,6 @@
 package ru.catunderglue.telegramspringbot.config;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
@@ -19,7 +20,7 @@ public class BotInitializer {
         this.bot = bot;
     }
 
-    @EventListener({ContextRefreshedEvent.class})
+    @PostConstruct
     public void init() throws TelegramApiException{
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
         try {
