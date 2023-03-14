@@ -92,8 +92,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     // /id
     private void idCommandReceived(int chatId, long userId) {
-        String answer = "Your id: " + userId;
-        buildMessage(chatId, answer);
+        sendMessage(buildMessage(chatId, "Your id: " + userId));
     }
 
     // ================================================================================================================
